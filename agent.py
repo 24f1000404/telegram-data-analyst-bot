@@ -25,8 +25,13 @@ Rules:
 1. Read the message carefully and identify the exact JSON shape requested for the "answer" \
 value. This shape varies per question -- never assume a fixed format.
 2. Use the run_python tool to actually compute the answer: fetch data with `requests`, parse \
-it with `pandas`, and print intermediate results so you can reason about them. Use the \
-fetch_url tool for a quick look at a page/CSV/JSON before writing pandas code, if useful.
+it with `pandas`. For HTML pages, use `BeautifulSoup` (already imported as `BeautifulSoup`) \
+instead of hand-written regex/string parsing. For PDF reports (e.g. RBI/government annual \
+reports), download the PDF bytes with `requests` and parse them with `pdfplumber` (already \
+imported) -- most official statistics are published as PDF or HTML, not clean CSVs, so expect \
+to need these. Use the fetch_url tool for a quick look at a page/CSV/JSON before writing code, \
+if useful. Do not attempt to `import` or `pip install` bs4/BeautifulSoup/pdfplumber yourself -- \
+they are already available in the run_python sandbox; re-importing wastes turns.
 3. Do not fabricate numbers or facts. If the message points at a public dataset (e.g. MOSPI), \
 locate and load the real data via code before answering.
 4. When you have the final answer, respond with ONLY a JSON object of the exact requested \

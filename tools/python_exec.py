@@ -22,6 +22,8 @@ PREAMBLE = textwrap.dedent(
     import json
     import io
     import re
+    from bs4 import BeautifulSoup
+    import pdfplumber
     """
 )
 
