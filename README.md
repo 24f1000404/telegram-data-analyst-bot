@@ -51,17 +51,25 @@ To run the official grading harness against the bot locally, clone
 add your own questions to `evals/questions.json`, and point it at this bot's
 username per that repo's instructions.
 
-## Deployment (Fly.io)
+## Deployment (Render, no card required)
 
-Fly.io is recommended because this bot only makes outbound long-polling requests
-to Telegram — it needs an always-on process, not an inbound HTTP endpoint — and
-Fly's free allowance doesn't idle-sleep the way some PaaS free web services do.
+Render's free web-service tier doesn't require a credit card. Free services do
+idle-sleep after 15 minutes without inbound HTTP traffic, so `bot.py` runs a tiny
+health-check HTTP server (`GET /` -> `200 ok`) alongside the Telegram long-polling
+loop — pair it with a free uptime pinger (e.g. [UptimeRobot](https://uptimerobot.com)
+or [cron-job.org](https://cron-job.org)) hitting your Render URL every ~10 minutes
+to keep the instance awake.
 
-```
-fly launch --no-deploy   # creates the app from fly.toml, skip auto-deploy
-fly secrets set BOT_TOKEN=... GEMINI_API_KEY=... GITHUB_TOKEN=... GITHUB_USERNAME=... GIST_ID=...
-fly deploy
-fly logs   # confirm "Bot starting (long polling)..." and no crash loop
+Steps:
+1. On [render.com](https://render.com), **New** -> **Web Service**, connect this
+   GitHub repo. Render auto-detects `render.yaml` / the `Dockerfile`.
+2. In the service's **Environment** tab, set `BOT_TOKEN`, `GEMINI_API_KEY`,
+   `GITHUB_TOKEN`, `GITHUB_USERNAME`, `GIST_ID` (same values as your local `.env`).
+3. Deploy. Check the logs for `"Bot starting (long polling)..."` and no crash loop.
+4. Add your Render service's public URL to an uptime pinger so it never sleeps.
+
+(A `fly.toml` is also included if you'd rather use Fly.io — it doesn't idle-sleep,
+but Fly now requires a card on file for account verification.)
 ```
 
 Keep the app running through grading; redeploy (`fly deploy`) after any code change.

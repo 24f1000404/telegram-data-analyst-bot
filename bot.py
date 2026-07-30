@@ -2,7 +2,9 @@
 import json
 import logging
 import os
+import threading
 from collections import defaultdict, deque
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from dotenv import load_dotenv
 from telegram import Update
@@ -54,7 +56,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await update.message.reply_text(reply)
 
 
+class _HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"ok")
+
+    def log_message(self, format, *args):
+        pass  # keep noisy health-check hits out of the bot log
+
+
+def _start_health_server():
+    """Minimal HTTP endpoint so PaaS free tiers (e.g. Render) treat this as a live
+    web service and an external uptime pinger can keep it from sleeping. The bot
+    itself only does outbound long-polling and needs no inbound HTTP otherwise."""
+    port = int(os.environ.get("PORT", "8080"))
+    server = HTTPServer(("0.0.0.0", port), _HealthHandler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    logger.info("Health check server listening on :%d", port)
+
+
 def main() -> None:
+    _start_health_server()
     token = os.environ["BOT_TOKEN"]
     app = Application.builder().token(token).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
