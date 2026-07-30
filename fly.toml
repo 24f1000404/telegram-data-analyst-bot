@@ -1,0 +1,14 @@
+app = "your-data-analyst-bot"
+primary_region = "iad"
+
+[build]
+
+[processes]
+app = "python bot.py"
+
+[[vm]]
+size = "shared-cpu-1x"
+memory = "512mb"
+
+# No [http_service] block: this app makes only outbound long-polling
+# connections to Telegram, it doesn't need to accept inbound traffic.
