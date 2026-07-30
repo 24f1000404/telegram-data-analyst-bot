@@ -22,8 +22,11 @@ PREAMBLE = textwrap.dedent(
     import json
     import io
     import re
+    import urllib.parse
     from bs4 import BeautifulSoup
     import pdfplumber
+
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
     """
 )
 

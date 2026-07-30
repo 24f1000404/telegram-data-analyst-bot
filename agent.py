@@ -45,13 +45,22 @@ earlier turns as context only if the latest message clearly depends on them (e.g
 they are unrelated leftover context, not part of this question.
 6. Never reuse a numeric value, name, or answer from an earlier turn unless you recomputed it \
 for the current question -- always derive the answer fresh from real data for the current message.
+7. Each run_python call is a fresh, independent process -- variables and imports from a previous \
+call do NOT exist in the next one. Write each call as a complete, self-contained script: import \
+everything it uses, and re-fetch/recompute any data it needs, even if you already did so in an \
+earlier call.
 """
 
 RUN_PYTHON_DECL = types.FunctionDeclaration(
     name="run_python",
     description=(
-        "Execute Python code in a sandboxed subprocess. pandas, numpy, requests, json, io, re "
-        "are preimported. Use print() to see output. No filesystem persistence across calls."
+        "Execute Python code in a sandboxed subprocess. pandas, numpy, requests, json, io, re, "
+        "BeautifulSoup, pdfplumber are preimported. Use print() to see output. "
+        "IMPORTANT: each call is a BRAND NEW process -- nothing persists between calls. "
+        "Variables, imports, and downloaded data from a previous call are NOT available in the "
+        "next one. Every call must be fully self-contained: re-import anything you use (even "
+        "things imported in an earlier call) and re-fetch or recompute any data you need, "
+        "within that same call."
     ),
     parameters=types.Schema(
         type="OBJECT",
