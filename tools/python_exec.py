@@ -11,7 +11,7 @@ import tempfile
 import textwrap
 from pathlib import Path
 
-TIMEOUT_SECONDS = 30
+TIMEOUT_SECONDS = 60
 MAX_OUTPUT_CHARS = 8000
 
 PREAMBLE = textwrap.dedent(

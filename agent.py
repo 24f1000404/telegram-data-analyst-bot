@@ -13,7 +13,7 @@ from tools.fetch import fetch_url
 from tools.python_exec import run_python
 
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-flash-lite-latest")
-MAX_TURNS = 12
+MAX_TURNS = 20
 MAX_RETRIES = 5
 DEFAULT_RETRY_DELAY = 5.0
 
