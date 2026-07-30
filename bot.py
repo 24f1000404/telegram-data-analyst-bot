@@ -5,6 +5,7 @@ import os
 import threading
 from collections import defaultdict, deque
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 
 from dotenv import load_dotenv
 from telegram import Update
@@ -58,10 +59,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 class _HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
+        if self.path == "/version":
+            try:
+                commit = (Path(__file__).parent / "GIT_COMMIT").read_text().strip()
+            except FileNotFoundError:
+                commit = "unknown"
+            body = commit.encode()
+        else:
+            body = b"ok"
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"ok")
+        self.wfile.write(body)
 
     def log_message(self, format, *args):
         pass  # keep noisy health-check hits out of the bot log
