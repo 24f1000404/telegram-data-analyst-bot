@@ -10,4 +10,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping health check endpoint
-        run: curl -sS -o /dev/null -w "status: %{http_code}\n" https://telegram-data-analyst-bot-cehs.onrender.com/
+        run: |
+          curl -sS -o /dev/null -w "status: %{http_code}\n" https://telegram-data-analyst-bot-cehs.onrender.com/
