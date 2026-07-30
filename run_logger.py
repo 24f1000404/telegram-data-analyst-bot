@@ -52,8 +52,16 @@ class RunLogger:
         )
         return self.gist_id
 
+    def _fetch_remote_content(self, gist_id: str) -> str:
+        """Reads the gist's current content so a fresh container (ephemeral disk,
+        empty local file) appends onto prior history instead of overwriting it."""
+        resp = self._session.get(f"{GITHUB_API}/gists/{gist_id}", timeout=15)
+        resp.raise_for_status()
+        return resp.json()["files"].get("run.jsonl", {}).get("content", "") or ""
+
     def log_run(self, record: dict) -> str:
-        """Appends `record` as one JSON line locally and pushes the file to the gist.
+        """Appends `record` as one JSON line, merging with the gist's current remote
+        content first so restarts on an ephemeral filesystem don't lose prior history.
 
         Returns the public raw URL for the gist file (log_url).
         """
@@ -68,7 +76,12 @@ class RunLogger:
             return str(LOCAL_LOG_PATH)
 
         gist_id = self._ensure_gist()
-        full_content = LOCAL_LOG_PATH.read_text(encoding="utf-8")
+        remote_content = self._fetch_remote_content(gist_id)
+        full_content = remote_content
+        if not full_content.endswith("\n") and full_content:
+            full_content += "\n"
+        full_content += line + "\n"
+
         resp = self._session.patch(
             f"{GITHUB_API}/gists/{gist_id}",
             json={"files": {"run.jsonl": {"content": full_content}}},
