@@ -16,19 +16,20 @@ MAX_OUTPUT_CHARS = 8000
 
 PREAMBLE = textwrap.dedent(
     """
-    import pandas as pd
-    import numpy as np
     import requests
     import json
     import io
     import re
     import urllib.parse
-    from bs4 import BeautifulSoup
-    import pdfplumber
 
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
     """
 )
+# pandas/numpy/BeautifulSoup/pdfplumber are intentionally NOT preimported here -- each
+# pulls in real memory (pandas+numpy alone is ~150MB+, pdfplumber drags in Pillow), and
+# on Render's 512MB free tier, forcing all of them into every subprocess regardless of
+# need was causing OOM restarts. The agent already re-imports what it uses per call
+# (confirmed from run traces), so import only-what's-needed keeps peak memory down.
 
 
 def run_python(code: str) -> dict:

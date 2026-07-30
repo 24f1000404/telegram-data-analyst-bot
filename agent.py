@@ -24,14 +24,16 @@ answer must take (e.g. {"answer": {"state": "<state name>"}, "log_url": "..."}).
 Rules:
 1. Read the message carefully and identify the exact JSON shape requested for the "answer" \
 value. This shape varies per question -- never assume a fixed format.
-2. Use the run_python tool to actually compute the answer: fetch data with `requests`, parse \
-it with `pandas`. For HTML pages, use `BeautifulSoup` (already imported as `BeautifulSoup`) \
-instead of hand-written regex/string parsing. For PDF reports (e.g. RBI/government annual \
-reports), download the PDF bytes with `requests` and parse them with `pdfplumber` (already \
-imported) -- most official statistics are published as PDF or HTML, not clean CSVs, so expect \
-to need these. Use the fetch_url tool for a quick look at a page/CSV/JSON before writing code, \
-if useful. Do not attempt to `import` or `pip install` bs4/BeautifulSoup/pdfplumber yourself -- \
-they are already available in the run_python sandbox; re-importing wastes turns.
+2. Use the run_python tool to actually compute the answer: fetch data with `requests`, and \
+`import pandas as pd` when you need it to parse/analyze tabular data. For HTML pages, \
+`from bs4 import BeautifulSoup` instead of hand-written regex/string parsing. For PDF reports \
+(e.g. RBI/government annual reports), download the PDF bytes with `requests` and \
+`import pdfplumber` to parse them -- most official statistics are published as PDF or HTML, \
+not clean CSVs, so expect to need these. pandas, numpy, BeautifulSoup, and pdfplumber are all \
+installed and importable, but NOT preimported -- import only the ones a given call actually \
+needs (they're memory-heavy; importing all of them on every call wastes memory for no reason \
+on lightweight calls like a simple web search). Use the fetch_url tool for a quick look at a \
+page/CSV/JSON before writing code, if useful.
 3. Do not fabricate numbers or facts. If the message points at a public dataset (e.g. MOSPI), \
 locate and load the real data via code before answering.
 4. When you have the final answer, respond with ONLY a JSON object of the exact requested \
@@ -54,13 +56,15 @@ earlier call.
 RUN_PYTHON_DECL = types.FunctionDeclaration(
     name="run_python",
     description=(
-        "Execute Python code in a sandboxed subprocess. pandas, numpy, requests, json, io, re, "
-        "BeautifulSoup, pdfplumber are preimported. Use print() to see output. "
+        "Execute Python code in a sandboxed subprocess. requests, json, io, re, urllib.parse "
+        "are preimported (plus a `headers` dict with a default User-Agent). pandas, numpy, "
+        "BeautifulSoup (bs4), and pdfplumber are installed but NOT preimported -- `import` "
+        "them yourself only in calls that actually need them, to keep memory use down. Use "
+        "print() to see output. "
         "IMPORTANT: each call is a BRAND NEW process -- nothing persists between calls. "
         "Variables, imports, and downloaded data from a previous call are NOT available in the "
-        "next one. Every call must be fully self-contained: re-import anything you use (even "
-        "things imported in an earlier call) and re-fetch or recompute any data you need, "
-        "within that same call."
+        "next one. Every call must be fully self-contained: import everything it uses and "
+        "re-fetch or recompute any data it needs, even if an earlier call already did so."
     ),
     parameters=types.Schema(
         type="OBJECT",
