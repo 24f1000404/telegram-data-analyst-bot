@@ -1,7 +1,7 @@
 """Fetches a public URL's raw content for the agent (datasets, HTML pages, etc.)."""
 import requests
 
-TIMEOUT_SECONDS = 20
+TIMEOUT_SECONDS = 10
 MAX_BYTES = 2_000_000  # 2MB cap
 USER_AGENT = "data-analyst-telegram-bot/1.0"
 

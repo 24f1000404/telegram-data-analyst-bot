@@ -92,8 +92,14 @@ def main() -> None:
     token = os.environ["BOT_TOKEN"]
     app = Application.builder().token(token).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    logger.info("Bot starting (long polling)...")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    # Telegram redelivers any update the bot never acknowledged, so a question that was
+    # in flight when the process died is re-answered on the next start -- during local
+    # testing that shows up as the bot replying to a question you have already moved on
+    # from. Off by default: in production a restart must not silently discard a real
+    # question. Set DROP_PENDING_UPDATES=1 when restarting mid-test.
+    drop_pending = os.environ.get("DROP_PENDING_UPDATES", "").lower() in ("1", "true", "yes")
+    logger.info("Bot starting (long polling, drop_pending_updates=%s)...", drop_pending)
+    app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=drop_pending)
 
 
 if __name__ == "__main__":
