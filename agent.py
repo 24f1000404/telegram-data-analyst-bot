@@ -17,7 +17,7 @@ MODEL = os.environ.get("GEMINI_MODEL", "gemini-flash-lite-latest")
 MAX_TURNS = 25
 MAX_RETRIES = 6
 DEFAULT_RETRY_DELAY = 5.0
-MIN_CALL_INTERVAL = 4.5  # seconds; keeps us under free-tier RPM even without hitting 429
+MIN_CALL_INTERVAL = 10.0  # seconds; keeps us under free-tier RPM even without hitting 429
 _last_call_ts = 0.0
 LOG_STRING_LIMIT = 1000  # keeps run.jsonl (a GitHub Gist, ~1MB raw-view cap) from bloating
 
