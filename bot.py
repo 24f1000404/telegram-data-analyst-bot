@@ -8,13 +8,14 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+load_dotenv()
+
 from telegram import Update
 from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
 from agent import answer_question
 from run_logger import RunLogger
-
-load_dotenv()
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
