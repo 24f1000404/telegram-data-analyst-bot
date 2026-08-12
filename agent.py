@@ -175,14 +175,15 @@ WEB_SEARCH_DECL = types.FunctionDeclaration(
 
 TOOLS = [types.Tool(function_declarations=[RUN_PYTHON_DECL, FETCH_URL_DECL, WEB_SEARCH_DECL])]
 
-_client = None
+GEMINI_API_KEYS = [k for k in (os.environ.get("GEMINI_API_KEY"), os.environ.get("GEMINI_API_KEY_2")) if k]
+
+_clients: dict[int, genai.Client] = {}
 
 
-def _get_client() -> genai.Client:
-    global _client
-    if _client is None:
-        _client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-    return _client
+def _get_client(key_idx: int) -> genai.Client:
+    if key_idx not in _clients:
+        _clients[key_idx] = genai.Client(api_key=GEMINI_API_KEYS[key_idx])
+    return _clients[key_idx]
 
 
 def _extract_retry_delay(exc: genai_errors.ClientError) -> float:
@@ -198,21 +199,49 @@ def _extract_retry_delay(exc: genai_errors.ClientError) -> float:
     return DEFAULT_RETRY_DELAY
 
 
-def _send_message_with_retry(chat, content):
-    global _last_call_ts
-    for attempt in range(MAX_RETRIES):
-        wait = MIN_CALL_INTERVAL - (time.time() - _last_call_ts)
-        if wait > 0:
-            time.sleep(wait)
-        try:
-            response = chat.send_message(content)
-            _last_call_ts = time.time()
-            return response
-        except genai_errors.ClientError as exc:
-            _last_call_ts = time.time()
-            if exc.code != 429 or attempt == MAX_RETRIES - 1:
-                raise
-            time.sleep(_extract_retry_delay(exc) + 1)
+class _Session:
+    """Wraps a genai Chat, transparently switching to a fallback API key (replaying the
+    conversation so far into a new chat) if the current key keeps 429ing even after
+    per-call retries -- that pattern means the key's daily quota is exhausted, not just a
+    transient rate spike, so retrying the same key further would never succeed."""
+
+    def __init__(self):
+        self.key_idx = 0
+        self.chat = self._new_chat(history=None)
+
+    def _new_chat(self, history):
+        return _get_client(self.key_idx).chats.create(
+            model=MODEL,
+            config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, tools=TOOLS),
+            history=history,
+        )
+
+    def _switch_key(self) -> bool:
+        if self.key_idx + 1 >= len(GEMINI_API_KEYS):
+            return False
+        self.key_idx += 1
+        self.chat = self._new_chat(history=self.chat.get_history())
+        return True
+
+    def send(self, content):
+        global _last_call_ts
+        for attempt in range(MAX_RETRIES):
+            wait = MIN_CALL_INTERVAL - (time.time() - _last_call_ts)
+            if wait > 0:
+                time.sleep(wait)
+            try:
+                response = self.chat.send_message(content)
+                _last_call_ts = time.time()
+                return response
+            except genai_errors.ClientError as exc:
+                _last_call_ts = time.time()
+                if exc.code != 429:
+                    raise
+                if attempt == MAX_RETRIES - 1:
+                    if self._switch_key():
+                        return self.send(content)
+                    raise
+                time.sleep(_extract_retry_delay(exc) + 1)
 
 
 def _run_tool(name: str, tool_input: dict) -> dict:
@@ -233,17 +262,13 @@ def answer_question(message_history: list[str], logger: RunLogger) -> dict:
     # Files written by this question's run_python calls are shared between those calls but
     # must not survive into the next question's run -- see tools.python_exec.reset_workspace.
     reset_workspace()
-    client = _get_client()
-    chat = client.chats.create(
-        model=MODEL,
-        config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, tools=TOOLS),
-    )
+    session = _Session()
 
     convo_text = "\n---\n".join(message_history)
     trace = {"messages_in": message_history, "tool_calls": []}
 
     final_answer = None
-    response = _send_message_with_retry(chat, convo_text)
+    response = session.send(convo_text)
     for _ in range(MAX_TURNS):
         parts = response.candidates[0].content.parts
         function_calls = [p.function_call for p in parts if p.function_call]
@@ -282,7 +307,7 @@ def answer_question(message_history: list[str], logger: RunLogger) -> dict:
                     response={"result": json.dumps(result)[:8000]},
                 )
             )
-        response = _send_message_with_retry(chat, response_parts)
+        response = session.send(response_parts)
     else:
         final_answer = {"error": "max_turns_exceeded"}
         trace["final_text"] = None
